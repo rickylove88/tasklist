@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音声タスクリスト</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; background: #f0f4f8; min-height: 100vh; }
+
+header { background: #2c3e50; color: white; padding: 16px 20px; text-align: center; }
+header h1 { font-size: 1.1rem; }
+
+.progress-wrap { background: white; padding: 12px 20px; border-bottom: 1px solid #e0e0e0; }
+.progress-bar { background: #ddd; border-radius: 10px; height: 8px; margin-bottom: 6px; }
+.progress-fill { background: #27ae60; height: 8px; border-radius: 10px; transition: width 0.3s; width: 0%; }
+.progress-text { font-size: 0.8rem; color: #666; text-align: center; }
+
+.voice-section { padding: 16px 20px; background: white; margin: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.voice-btn {
+  width: 100%; padding: 14px; border: none; border-radius: 10px;
+  background: #2c3e50; color: white; font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.voice-btn.listening { background: #e74c3c; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+.voice-result { margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px; font-size: 0.9rem; color: #333; min-height: 44px; }
+
+.input-row { display: flex; gap: 8px; margin-top: 10px; }
+.input-row input { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; }
+.input-row button { padding: 10px 16px; background: #27ae60; color: white; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; }
+
+.filter-row { display: flex; gap: 8px; padding: 0 12px 8px; }
+.filter-btn { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 8px; background: white; font-size: 0.8rem; cursor: pointer; color: #555; }
+.filter-btn.active { background: #2c3e50; color: white; border-color: #2c3e50; }
+
+.list { padding: 0 12px 80px; }
+.item {
+  background: white; border-radius: 10px; padding: 12px 14px;
+  margin-bottom: 8px; display: flex; align-items: flex-start; gap: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+}
+.item.done { opacity: 0.4; }
+.item.done .item-text { text-decoration: line-through; color: #aaa; }
+.item input[type=checkbox] { width: 22px; height: 22px; accent-color: #27ae60; cursor: pointer; flex-shrink: 0; margin-top: 2px; }
+.item-body { flex: 1; }
+.item-text { font-size: 0.9rem; color: #222; line-height: 1.5; }
+.item-del { background: none; border: none; color: #ccc; font-size: 1.2rem; cursor: pointer; padding: 0 4px; }
+.urgent-badge { font-size: 0.72rem; color: #e74c3c; font-weight: bold; margin-left: 4px; }
+
+.empty { text-align: center; color: #aaa; font-size: 0.9rem; padding: 40px 0; }
+</style>
+</head>
+<body>
+
+<header><h1>📋 音声タスクリスト</h1></header>
+
+<div class="progress-wrap">
+  <div class="progress-bar"><div class="progress-fill" id="pf"></div></div>
+  <div class="progress-text" id="pt">0 / 0 完了</div>
+</div>
+
+<div class="voice-section">
+  <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">🎤 タップして音声入力</button>
+  <div class="voice-result" id="voiceResult">ここに音声が表示されます</div>
+  <div class="input-row">
+    <input type="text" id="textInput" placeholder="またはここに直接入力" onkeydown="if(event.key==='Enter')addItem()">
+    <button onclick="addItem()">追加</button>
+  </div>
+</div>
+
+<div class="filter-row">
+  <button class="filter-btn active" onclick="setFilter('all',this)">すべて</button>
+  <button class="filter-btn" onclick="setFilter('urgent',this)">⚡急ぎ</button>
+  <button class="filter-btn" onclick="setFilter('active',this)">未完了</button>
+  <button class="filter-btn" onclick="setFilter('done',this)">完了済み</button>
+</div>
+
+<div class="list" id="list"></div>
+
+<script>
+let tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+let filter = 'all';
+let recognition = null;
+let listening = false;
+
+function save() { localStorage.setItem('tasks', JSON.stringify(tasks)); }
+
+function addItem() {
+  const input = document.getElementById('textInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const urgent = text.includes('急ぎ') || text.includes('急いで') || text.includes('すぐ');
+  tasks.push({ id: Date.now(), text, done: false, urgent });
+  input.value = '';
+  save();
+  render();
+}
+
+function toggleDone(id) {
+  const t = tasks.find(t => t.id === id);
+  if (t) { t.done = !t.done; save(); render(); }
+}
+
+function deleteItem(id) {
+  tasks = tasks.filter(t => t.id !== id);
+  save();
+  render();
+}
+
+function setFilter(f, btn) {
+  filter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function render() {
+  const list = document.getElementById('list');
+  let filtered = tasks;
+  if (filter === 'urgent') filtered = tasks.filter(t => t.urgent && !t.done);
+  else if (filter === 'active') filtered = tasks.filter(t => !t.done);
+  else if (filter === 'done') filtered = tasks.filter(t => t.done);
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty">タスクがありません</div>';
+  } else {
+    list.innerHTML = filtered.map(t => `
+      <div class="item ${t.done ? 'done' : ''}">
+        <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleDone(${t.id})">
+        <div class="item-body">
+          <span class="item-text">${t.text}${t.urgent && !t.done ? '<span class="urgent-badge">⚡急ぎ</span>' : ''}</span>
+        </div>
+        <button class="item-del" onclick="deleteItem(${t.id})">×</button>
+      </div>`).join('');
+  }
+
+  const done = tasks.filter(t => t.done).length;
+  const total = tasks.length;
+  document.getElementById('pf').style.width = total ? (done/total*100)+'%' : '0%';
+  document.getElementById('pt').textContent = `${done} / ${total} 完了`;
+}
+
+function toggleVoice() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('このブラウザは音声入力に対応していません。ChromeまたはSafariをお使いください。');
+    return;
+  }
+  if (listening) {
+    recognition.stop();
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'ja-JP';
+  recognition.interimResults = true;
+  recognition.continuous = false;
+
+  recognition.onstart = () => {
+    listening = true;
+    document.getElementById('voiceBtn').classList.add('listening');
+    document.getElementById('voiceBtn').textContent = '🔴 聞いています... (タップで停止)';
+    document.getElementById('voiceResult').textContent = '話してください...';
+  };
+  recognition.onresult = (e) => {
+    const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+    document.getElementById('voiceResult').textContent = transcript;
+    document.getElementById('textInput').value = transcript;
+  };
+  recognition.onend = () => {
+    listening = false;
+    document.getElementById('voiceBtn').classList.remove('listening');
+    document.getElementById('voiceBtn').textContent = '🎤 タップして音声入力';
+  };
+  recognition.onerror = (e) => {
+    listening = false;
+    document.getElementById('voiceBtn').classList.remove('listening');
+    document.getElementById('voiceBtn').textContent = '🎤 タップして音声入力';
+    document.getElementById('voiceResult').textContent = 'エラー: もう一度お試しください';
+  };
+  recognition.start();
+}
+
+render();
+</script>
+</body>
+</html>
