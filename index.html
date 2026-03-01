@@ -14,13 +14,22 @@ header h1 { font-size: 1.1rem; }
 .progress-fill { background: #27ae60; height: 8px; border-radius: 10px; transition: width 0.3s; width: 0%; }
 .progress-text { font-size: 0.8rem; color: #666; text-align: center; }
 .form-section { padding: 14px; background: white; margin: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.field-label { font-size: 0.78rem; color: #888; margin-bottom: 4px; margin-top: 8px; }
+.voice-row { display: flex; gap: 8px; margin-bottom: 4px; }
+.voice-row input { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.88rem; }
+.mic-btn { padding: 10px 14px; border: none; border-radius: 8px; background: #2c3e50; color: white; font-size: 1rem; cursor: pointer; flex-shrink: 0; }
+.mic-btn.listening { background: #e74c3c; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
 .form-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .form-row input, .form-row select { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.88rem; }
-.form-row input[type=date] { flex: 0 0 auto; width: 150px; }
-.voice-btn { width: 100%; padding: 12px; border: none; border-radius: 10px; background: #2c3e50; color: white; font-size: 0.95rem; cursor: pointer; margin-bottom: 8px; }
-.voice-btn.listening { background: #e74c3c; animation: pulse 1s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
-.voice-result { padding: 8px 12px; background: #f9f9f9; border-radius: 8px; font-size: 0.85rem; color: #555; margin-bottom: 8px; min-height: 36px; }
+.category-label { font-size: 0.78rem; color: #888; margin-bottom: 6px; margin-top: 8px; }
+.cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+.cat-btn { padding: 8px 4px; border: 1px solid #ddd; border-radius: 8px; background: white; font-size: 0.78rem; cursor: pointer; text-align: center; color: #555; }
+.cat-btn.selected { background: #2c3e50; color: white; border-color: #2c3e50; }
+.bank-label { font-size: 0.78rem; color: #888; margin-bottom: 6px; }
+.bank-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+.bank-btn { padding: 7px 4px; border: 1px solid #ddd; border-radius: 8px; background: white; font-size: 0.75rem; cursor: pointer; text-align: center; color: #555; }
+.bank-btn.selected { background: #1565c0; color: white; border-color: #1565c0; }
 .add-btn { width: 100%; padding: 11px; background: #27ae60; color: white; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; font-weight: bold; }
 .filter-row { display: flex; gap: 6px; padding: 0 12px 8px; overflow-x: auto; }
 .filter-btn { flex-shrink: 0; padding: 7px 12px; border: 1px solid #ddd; border-radius: 20px; background: white; font-size: 0.78rem; cursor: pointer; color: #555; }
@@ -41,6 +50,7 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: #27ae60; cursor:
 .badge-legal { background: #f3e5f5; color: #6a1b9a; }
 .badge-payment { background: #fce4ec; color: #b71c1c; }
 .badge-mercari { background: #fff3e0; color: #e65100; }
+.badge-rakuten { background: #ffebee; color: #c62828; }
 .badge-other { background: #f5f5f5; color: #555; }
 .badge-urgent { background: #ffebee; color: #c62828; }
 .item-date { font-size: 0.75rem; color: #888; }
@@ -56,23 +66,37 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: #27ae60; cursor:
   <div class="progress-text" id="pt">0 / 0 完了</div>
 </div>
 <div class="form-section">
-  <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">🎤 タップして音声入力</button>
-  <div class="voice-result" id="voiceResult">ここに音声が表示されます</div>
-  <div class="form-row">
-    <input type="text" id="companyInput" placeholder="会社名">
+  <div class="field-label">会社名</div>
+  <div class="voice-row">
+    <input type="text" id="companyInput" placeholder="会社名を入力または音声入力">
+    <button class="mic-btn" id="micCompany" onclick="toggleVoice('company')">🎤</button>
   </div>
-  <div class="form-row">
-    <input type="text" id="taskInput" placeholder="タスク内容" onkeydown="if(event.key==='Enter')addItem()">
+  <div class="field-label">タスク内容</div>
+  <div class="voice-row">
+    <input type="text" id="taskInput" placeholder="タスクを入力または音声入力">
+    <button class="mic-btn" id="micTask" onclick="toggleVoice('task')">🎤</button>
   </div>
+  <div class="field-label">期限日</div>
   <div class="form-row">
-    <select id="categoryInput">
-      <option value="other">カテゴリ</option>
-      <option value="bank">🏦 銀行</option>
-      <option value="legal">⚖️ 法務</option>
-      <option value="payment">💳 支払い</option>
-      <option value="mercari">📦 メルカリ</option>
-    </select>
     <input type="date" id="dateInput">
+  </div>
+  <div class="category-label">カテゴリ</div>
+  <div class="cat-grid">
+    <button class="cat-btn" data-cat="bank" onclick="selectCat(this)">🏦 銀行</button>
+    <button class="cat-btn" data-cat="legal" onclick="selectCat(this)">⚖️ 法務</button>
+    <button class="cat-btn" data-cat="payment" onclick="selectCat(this)">💳 支払い</button>
+    <button class="cat-btn" data-cat="mercari" onclick="selectCat(this)">📦 メルカリ</button>
+    <button class="cat-btn" data-cat="rakuten" onclick="selectCat(this)">🛒 楽天市場</button>
+    <button class="cat-btn" data-cat="other" onclick="selectCat(this)">📋 その他</button>
+  </div>
+  <div class="bank-label">銀行（複数選択可）</div>
+  <div class="bank-grid">
+    <button class="bank-btn" data-bank="楽天銀行" onclick="toggleBank(this)">楽天銀行</button>
+    <button class="bank-btn" data-bank="SBI銀行" onclick="toggleBank(this)">SBI銀行</button>
+    <button class="bank-btn" data-bank="GMO銀行" onclick="toggleBank(this)">GMO銀行</button>
+    <button class="bank-btn" data-bank="PayPay銀行" onclick="toggleBank(this)">PayPay銀行</button>
+    <button class="bank-btn" data-bank="地銀" onclick="toggleBank(this)">地銀</button>
+    <button class="bank-btn" data-bank="信金" onclick="toggleBank(this)">信金</button>
   </div>
   <button class="add-btn" onclick="addItem()">＋ 追加</button>
 </div>
@@ -84,35 +108,57 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: #27ae60; cursor:
   <button class="filter-btn" onclick="setFilter('legal',this)">⚖️法務</button>
   <button class="filter-btn" onclick="setFilter('payment',this)">💳支払い</button>
   <button class="filter-btn" onclick="setFilter('mercari',this)">📦メルカリ</button>
+  <button class="filter-btn" onclick="setFilter('rakuten',this)">🛒楽天市場</button>
   <button class="filter-btn" onclick="setFilter('active',this)">未完了</button>
   <button class="filter-btn" onclick="setFilter('done',this)">完了済み</button>
 </div>
 <div class="list" id="list"></div>
 <script>
-let tasks = JSON.parse(localStorage.getItem('tasks2') || '[]');
+let tasks = JSON.parse(localStorage.getItem('tasks3') || '[]');
 let filter = 'all';
+let selectedCat = '';
+let selectedBanks = [];
 let recognition = null;
-let listening = false;
+let listeningTarget = null;
 
-function save() { localStorage.setItem('tasks2', JSON.stringify(tasks)); }
+function save() { localStorage.setItem('tasks3', JSON.stringify(tasks)); }
 
 function isOverdue(dateStr) {
   if (!dateStr) return false;
   return new Date(dateStr) < new Date(new Date().toDateString());
 }
 
+function selectCat(btn) {
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedCat = btn.dataset.cat;
+}
+
+function toggleBank(btn) {
+  const bank = btn.dataset.bank;
+  if (selectedBanks.includes(bank)) {
+    selectedBanks = selectedBanks.filter(b => b !== bank);
+    btn.classList.remove('selected');
+  } else {
+    selectedBanks.push(bank);
+    btn.classList.add('selected');
+  }
+}
+
 function addItem() {
   const company = document.getElementById('companyInput').value.trim();
   const task = document.getElementById('taskInput').value.trim();
-  const category = document.getElementById('categoryInput').value;
   const date = document.getElementById('dateInput').value;
-  if (!task) return;
+  if (!task) { alert('タスク内容を入力してください'); return; }
   const urgent = task.includes('急ぎ') || task.includes('急いで') || task.includes('すぐ');
-  tasks.push({ id: Date.now(), company, task, category, date, done: false, urgent });
+  tasks.push({ id: Date.now(), company, task, category: selectedCat, banks: [...selectedBanks], date, done: false, urgent });
   document.getElementById('companyInput').value = '';
   document.getElementById('taskInput').value = '';
-  document.getElementById('categoryInput').value = 'other';
   document.getElementById('dateInput').value = '';
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.bank-btn').forEach(b => b.classList.remove('selected'));
+  selectedCat = '';
+  selectedBanks = [];
   save(); render();
 }
 
@@ -134,17 +180,16 @@ function setFilter(f, btn) {
   render();
 }
 
-const catClass = { bank:'badge-bank', legal:'badge-legal', payment:'badge-payment', mercari:'badge-mercari', other:'badge-other' };
-const catLabel = { bank:'🏦 銀行', legal:'⚖️ 法務', payment:'💳 支払い', mercari:'📦 メルカリ', other:'' };
+const catClass = { bank:'badge-bank', legal:'badge-legal', payment:'badge-payment', mercari:'badge-mercari', rakuten:'badge-rakuten', other:'badge-other' };
+const catLabel = { bank:'🏦 銀行', legal:'⚖️ 法務', payment:'💳 支払い', mercari:'📦 メルカリ', rakuten:'🛒 楽天市場', other:'📋 その他' };
 
 function render() {
-  const today = new Date().toDateString();
   let filtered = tasks;
   if (filter === 'urgent') filtered = tasks.filter(t => t.urgent && !t.done);
   else if (filter === 'overdue') filtered = tasks.filter(t => isOverdue(t.date) && !t.done);
   else if (filter === 'active') filtered = tasks.filter(t => !t.done);
   else if (filter === 'done') filtered = tasks.filter(t => t.done);
-  else if (['bank','legal','payment','mercari'].includes(filter)) filtered = tasks.filter(t => t.category === filter && !t.done);
+  else if (['bank','legal','payment','mercari','rakuten'].includes(filter)) filtered = tasks.filter(t => t.category === filter && !t.done);
 
   const list = document.getElementById('list');
   if (filtered.length === 0) {
@@ -152,6 +197,7 @@ function render() {
   } else {
     list.innerHTML = filtered.map(t => {
       const overdue = isOverdue(t.date) && !t.done;
+      const banks = t.banks && t.banks.length ? t.banks.map(b => `<span class="badge badge-bank">${b}</span>`).join('') : '';
       return `<div class="item ${t.done?'done':''} ${overdue?'overdue':''}">
         <div class="item-top">
           <input type="checkbox" ${t.done?'checked':''} onchange="toggleDone(${t.id})">
@@ -159,8 +205,9 @@ function render() {
             ${t.company ? `<div class="item-company">🏢 ${t.company}</div>` : ''}
             <div class="item-task">${t.task}${t.urgent&&!t.done?' <span class="badge badge-urgent">⚡急ぎ</span>':''}</div>
             <div class="item-meta">
-              ${t.category && t.category !== 'other' ? `<span class="badge ${catClass[t.category]}">${catLabel[t.category]}</span>` : ''}
-              ${t.date ? `<span class="item-date ${overdue?'overdue':''}">${overdue?'⏰ 期限切れ: ':'📅 '}${t.date}</span>` : ''}
+              ${t.category && catLabel[t.category] ? `<span class="badge ${catClass[t.category]}">${catLabel[t.category]}</span>` : ''}
+              ${banks}
+              ${t.date ? `<span class="item-date ${overdue?'overdue':''}">${overdue?'⏰期限切れ: ':'📅 '}${t.date}</span>` : ''}
             </div>
           </div>
           <button class="item-del" onclick="deleteItem(${t.id})">×</button>
@@ -174,36 +221,31 @@ function render() {
   document.getElementById('pt').textContent = `${done} / ${total} 完了`;
 }
 
-function toggleVoice() {
+function toggleVoice(target) {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
     alert('ChromeまたはSafariをお使いください。');
     return;
   }
-  if (listening) { recognition.stop(); return; }
+  if (recognition) { recognition.stop(); recognition = null; listeningTarget = null; return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR();
   recognition.lang = 'ja-JP';
   recognition.interimResults = true;
-  recognition.onstart = () => {
-    listening = true;
-    document.getElementById('voiceBtn').classList.add('listening');
-    document.getElementById('voiceBtn').textContent = '🔴 聞いています... (タップで停止)';
-    document.getElementById('voiceResult').textContent = '話してください...';
-  };
+  listeningTarget = target;
+  const btnId = target === 'company' ? 'micCompany' : 'micTask';
+  document.getElementById(btnId).classList.add('listening');
   recognition.onresult = (e) => {
     const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
-    document.getElementById('voiceResult').textContent = transcript;
-    document.getElementById('taskInput').value = transcript;
+    const inputId = listeningTarget === 'company' ? 'companyInput' : 'taskInput';
+    document.getElementById(inputId).value = transcript;
   };
   recognition.onend = () => {
-    listening = false;
-    document.getElementById('voiceBtn').classList.remove('listening');
-    document.getElementById('voiceBtn').textContent = '🎤 タップして音声入力';
+    document.getElementById(btnId).classList.remove('listening');
+    recognition = null; listeningTarget = null;
   };
   recognition.onerror = () => {
-    listening = false;
-    document.getElementById('voiceBtn').classList.remove('listening');
-    document.getElementById('voiceBtn').textContent = '🎤 タップして音声入力';
+    document.getElementById(btnId).classList.remove('listening');
+    recognition = null; listeningTarget = null;
   };
   recognition.start();
 }
