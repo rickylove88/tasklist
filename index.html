@@ -21,7 +21,7 @@ header h1 { font-size: 1.1rem; }
 .mic-btn.listening { background: #e74c3c; animation: pulse 1s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
 .form-row { display: flex; gap: 8px; margin-bottom: 8px; }
-.form-row input, .form-row select { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.88rem; }
+.form-row input { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.88rem; }
 .category-label { font-size: 0.78rem; color: #888; margin-bottom: 6px; margin-top: 8px; }
 .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
 .cat-btn { padding: 8px 4px; border: 1px solid #ddd; border-radius: 8px; background: white; font-size: 0.78rem; cursor: pointer; text-align: center; color: #555; }
@@ -31,6 +31,8 @@ header h1 { font-size: 1.1rem; }
 .bank-btn { padding: 7px 4px; border: 1px solid #ddd; border-radius: 8px; background: white; font-size: 0.75rem; cursor: pointer; text-align: center; color: #555; }
 .bank-btn.selected { background: #1565c0; color: white; border-color: #1565c0; }
 .add-btn { width: 100%; padding: 11px; background: #27ae60; color: white; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; font-weight: bold; }
+.share-section { padding: 0 12px 8px; }
+.line-btn { width: 100%; padding: 12px; background: #06c755; color: white; border: none; border-radius: 10px; font-size: 0.95rem; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .filter-row { display: flex; gap: 6px; padding: 0 12px 8px; overflow-x: auto; }
 .filter-btn { flex-shrink: 0; padding: 7px 12px; border: 1px solid #ddd; border-radius: 20px; background: white; font-size: 0.78rem; cursor: pointer; color: #555; }
 .filter-btn.active { background: #2c3e50; color: white; border-color: #2c3e50; }
@@ -57,6 +59,8 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: #27ae60; cursor:
 .item-date.overdue { color: #e74c3c; font-weight: bold; }
 .item-del { background: none; border: none; color: #ccc; font-size: 1.2rem; cursor: pointer; padding: 0 4px; }
 .empty { text-align: center; color: #aaa; font-size: 0.9rem; padding: 40px 0; }
+.toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.85rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+.toast.show { opacity: 1; }
 </style>
 </head>
 <body>
@@ -100,6 +104,9 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: #27ae60; cursor:
   </div>
   <button class="add-btn" onclick="addItem()">＋ 追加</button>
 </div>
+<div class="share-section">
+  <button class="line-btn" onclick="shareToLine()">💬 LINEに共有する</button>
+</div>
 <div class="filter-row">
   <button class="filter-btn active" onclick="setFilter('all',this)">すべて</button>
   <button class="filter-btn" onclick="setFilter('urgent',this)">⚡急ぎ</button>
@@ -113,6 +120,7 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: #27ae60; cursor:
   <button class="filter-btn" onclick="setFilter('done',this)">完了済み</button>
 </div>
 <div class="list" id="list"></div>
+<div class="toast" id="toast"></div>
 <script>
 let tasks = JSON.parse(localStorage.getItem('tasks3') || '[]');
 let filter = 'all';
@@ -178,6 +186,33 @@ function setFilter(f, btn) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   render();
+}
+
+function shareToLine() {
+  const activeTasks = tasks.filter(t => !t.done);
+  if (activeTasks.length === 0) { showToast('共有するタスクがありません'); return; }
+  const today = new Date().toLocaleDateString('ja-JP');
+  let text = `📋 タスクリスト（${today}）\n`;
+  text += `━━━━━━━━━━━━\n`;
+  activeTasks.forEach((t, i) => {
+    text += `\n${i+1}. `;
+    if (t.company) text += `【${t.company}】\n`;
+    text += `   ${t.task}`;
+    if (t.urgent) text += ' ⚡急ぎ';
+    if (t.banks && t.banks.length) text += `\n   🏦 ${t.banks.join('・')}`;
+    if (t.date) text += `\n   📅 ${t.date}`;
+    text += '\n';
+  });
+  text += `━━━━━━━━━━━━\n未完了: ${activeTasks.length}件`;
+  const url = `https://line.me/R/share?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
 }
 
 const catClass = { bank:'badge-bank', legal:'badge-legal', payment:'badge-payment', mercari:'badge-mercari', rakuten:'badge-rakuten', other:'badge-other' };
@@ -252,4 +287,4 @@ function toggleVoice(target) {
 render();
 </script>
 </body>
-</html>
+  </html>
